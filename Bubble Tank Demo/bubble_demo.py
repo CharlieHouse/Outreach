@@ -155,7 +155,7 @@ def updateTemp():
     tempText.value = 'CPU = ' + temp + 'deg C'
 
 def kill_process():
-    os.system('pkill python')
+    os.system('killall python3')
 
 ##### <<<<<<<<< SETUP AUDIO STREAM >>>>>>>>> #####
 p = pyaudio.PyAudio()
