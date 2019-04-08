@@ -1,0 +1,151 @@
+"""
+________________________________________________
+
+BUBBLE ABSORPTION DEMO
+University of Southampton
+Institute of Sound and Vibration Research
+
+Programmed by Charlie House - July 2018
+Contact: c.house@soton.ac.uk
+________________________________________________
+This script is a controller for the bubble absorption demo within the ISVR, University of Southampton. It uses PyAudio to setup
+an audio stream in callback mode. This allows a sine wave to be generated in real-time such that the frequency and amplitude can
+be varied by a user. This is set to output at 48kHz using the default audio device.
+
+GUIZero (a wrapper for TKInter) is used to generate a GUI for the end-user, with a number of features. One of these is to
+enable or disable the bubble generation device. This sends a digital 1 or 0 out of GPIO pin 18, which should then be interfaced
+with the bubble generation machine's switch.
+
+"""
+
+##### IMPORTS #####
+from guizero import App,PushButton,Slider,Text,Picture
+import numpy as np
+import pyaudio
+import time
+import math
+from itertools import count
+import scipy.signal
+import RPi.GPIO as GPIO
+
+
+##### <<<<<<<<< VARIABLES >>>>>>>>> #####
+
+audio_gain = 0                  # Initial Gain
+fs = 48000                      # Sampling Frequency
+output_index = 1                # Select Audio Output Device
+output_channels = 1             # Number of Output Channels
+frame_size = 8192               # Side of Buffer in Callback Fnc
+freq = 100                      # Initial Frequency
+last_t = 0                      # Counter used for Sine Wave
+freqs = [400,800,1000,1200]     # Vector of Frequencies for Button Selection
+
+
+
+##### <<<<<<<<< FUNCTION DEFS >>>>>>>>> #####
+
+# MAIN CALLBACK FUNCTION
+def playingCallback(in_data, frame_count, time_info, status):
+    global last_t
+    # global current_freq
+
+    # Way to Limit last_t increasing indefinitely
+    if audio_gain == 0:
+        last_t = 0
+
+    # Generate Sine Wave
+    t = np.arange(last_t,last_t + frame_size)/fs
+    signal = np.sin(2*np.pi*freq*t)
+
+    # Apply Gain
+    output = signal * audio_gain
+    # Increment counter
+    last_t = last_t + frame_size
+
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  OUTPUT PROCESSING   >>>>>>>>>>>>>>>>>>>>>>>>>>>
+    out_data = output.astype(np.float32)
+    out_data = out_data.tobytes()
+    return out_data, pyaudio.paContinue
+
+
+
+
+# GUI FUNCTIONS
+def push_play():
+    stream.start_stream()
+    
+
+def push_stop():
+    global last_t
+    stream.stop_stream()
+    last_t = 0     # Way to Limit last_t increasing indefinitely
+
+def change_gain():
+    global audio_gain
+    audio_gain = slider_gain.value/100
+
+def change_freq():
+    global freq
+    global last_t
+    freq = freq_slider.value
+    last_t = 0     # Way to Limit last_t increasing indefinitely
+
+def push_freq(num):
+    global freq
+    global freqs
+    freq = freqs[num]
+    last_t = 0     # Way to Limit last_t increasing indefinitely
+    freq_slider.value = freqs[num]
+
+def bubbles_on():
+    GPIO.output(18,GPIO.HIGH)
+    print('bubbles on')
+
+def bubbles_off():
+    GPIO.output(18,GPIO.LOW)
+    print('bubbles off')
+
+##### <<<<<<<<< SETUP AUDIO STREAM >>>>>>>>> #####
+p = pyaudio.PyAudio()
+
+stream = p.open(format = pyaudio.paFloat32, channels = output_channels, rate = fs, output = True, stream_callback=playingCallback,output_device_index=output_index,frames_per_buffer=frame_size)
+stream.stop_stream()
+
+##### <<<<<<<<< SETUP GPIO PINS FOR BUBBLES >>>>>>>>> #####
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
+GPIO.setup(18,GPIO.OUT)
+
+##### <<<<<<<<< CONFIGURE GUI >>>>>>>>> #####
+
+# Header Section
+playback_app = App(title="Playback App",bg = (255, 255, 255),layout='grid')
+isvrlogo = Picture(playback_app, image="isvrlogo.jpg",grid=[0,0])
+isvrlogo.height = 60
+isvrlogo.width = 180
+annotation = Text(playback_app,text="Bubble Absorption Demo",size=30,grid=[1,0,3,1])
+uoslogo = Picture(playback_app, image="uoslogo.jpg",grid=[5,0],align='right')
+uoslogo.height = 60
+uoslogo.width = 200
+
+# Main Section
+play_button = PushButton(playback_app,command=push_play,text="Tone On",grid=[1,1,2,1],padx=50)
+stop_button = PushButton(playback_app,command=push_stop,text="Tone Off",grid=[3,1,2,1],padx=50)
+annotation = Text(playback_app,text="Volume",size=15,grid = [0,2])
+slider_gain = Slider(playback_app,command=change_gain,grid=[1,2,4,1])
+slider_gain.width=400
+slider_gain.height=40
+annotation = Text(playback_app,text="Frequency",size=15,grid=[0,3])
+freq_slider = Slider(playback_app,command=change_freq,start=100,end=1200,grid=[1,3,4,1])
+freq_slider.width = 400
+freq_slider.height=40
+f1_button = PushButton(playback_app,command=push_freq,args=[0],text=str(freqs[0]) + ' Hz',grid=[1,4],padx = 20)
+f2_button = PushButton(playback_app,command=push_freq,args=[1],text=str(freqs[1]) + ' Hz',grid=[2,4],padx = 20)
+f3_button = PushButton(playback_app,command=push_freq,args=[2],text=str(freqs[2]) + ' Hz',grid=[3,4],padx = 10)
+f4_button = PushButton(playback_app,command=push_freq,args=[3],text=str(freqs[3]) + ' Hz',grid=[4,4],padx = 10)
+bubon_button = PushButton(playback_app,command=bubbles_on,text="Bubbles On",grid=[1,5,2,1],padx=50)
+buboff_button = PushButton(playback_app,command=bubbles_off,text="Bubbles Off",grid=[3,5,2,1],padx=50)
+
+
+playback_app.display()
