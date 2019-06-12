@@ -5,13 +5,13 @@ from . import utilities as utils
 
 class Window(BaseWindow):
 
-    def __init__(self, master, title="guizero", width=500, height=500, layout="auto", bg=None, visible=True):
+    def __init__(self, master, title="guizero", width=800, height=480, layout="auto", bg="#ffffff", visible=True):
 
         description = "[Window] oject"
         
         self._modal = False
         tk = Toplevel(master.tk)
-        
+        tk.attributes("-fullscreen",True)
         super(Window, self).__init__(
             master, 
             tk,
