@@ -24,16 +24,17 @@ audio_dev_index = 2
 frame_size = 4096
 
 # Global Variables
-gain = 0.1
-duration = 10   # Duration of Measurement (in Seconds)
+gain = 0.01
+duration = 20   # Duration of Measurement (in Seconds)
 last_t = 0  # Counter used for Sine Wave
 
+# filters bypassed below
 # Calculate HPF at 20Hz
 normal_cutoff = 20 / (0.5 * fs)
 bh, ah = sig.butter(4, normal_cutoff, btype='high', analog=False)
 
-# Calculate LPF at 50Hz
-normal_cutoff = 50/(0.5*fs)
+# Calculate LPF at 70Hz
+normal_cutoff = 70/(0.5*fs)
 bl,al = sig.butter(6,normal_cutoff, btype='low', analog=False)
 
 ########## <<<<<<<<< FUNCTION DEFS >>>>>>>>> ##########
@@ -49,8 +50,8 @@ def playingCallback(in_data, frame_count, time_info, status):
     audio_frame = np.reshape(audio_frame_int, (frame_size, 2))
 
     mic_in = audio_frame[:,0]
-    mic_in = sig.lfilter(bh, ah, mic_in)  # APply HPF
-    mic_in = sig.lfilter(bl,al, mic_in) # Apply LPF
+    #mic_in = sig.lfilter(bh, ah, mic_in)  # APply HPF
+    #mic_in = sig.lfilter(bl,al, mic_in) # Apply LPF
     # Record Input Channel 1
     input_recording[last_t : last_t+frame_size] = mic_in
 
@@ -129,4 +130,4 @@ def measure_plant(freq_in):
     np.save('plantdata.npy',plant_est)
     return plant_est
 
-measure_plant(25.2)
+measure_plant(40.3)
